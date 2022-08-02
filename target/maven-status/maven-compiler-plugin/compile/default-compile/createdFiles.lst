@@ -43,6 +43,7 @@ com\itheima\reggie\ReggieApplication.class
 com\itheima\reggie\controller\DishController.class
 com\itheima\reggie\dto\OrdersDto.class
 com\itheima\reggie\mapper\OrderDetailMapper.class
+com\itheima\reggie\config\RedisConfig.class
 com\itheima\reggie\controller\EmployeeController.class
 com\itheima\reggie\mapper\SetmealMapper.class
 com\itheima\reggie\service\CategoryService.class

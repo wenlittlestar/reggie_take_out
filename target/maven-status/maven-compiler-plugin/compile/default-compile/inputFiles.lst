@@ -35,6 +35,7 @@ D:\javarun\IDEA\project\reggie_take_out\src\main\java\com\itheima\reggie\service
 D:\javarun\IDEA\project\reggie_take_out\src\main\java\com\itheima\reggie\service\SetmealDishService.java
 D:\javarun\IDEA\project\reggie_take_out\src\main\java\com\itheima\reggie\controller\CategoryController.java
 D:\javarun\IDEA\project\reggie_take_out\src\main\java\com\itheima\reggie\dto\SetmealDto.java
+D:\javarun\IDEA\project\reggie_take_out\src\main\java\com\itheima\reggie\config\RedisConfig.java
 D:\javarun\IDEA\project\reggie_take_out\src\main\java\com\itheima\reggie\service\EmployeeService.java
 D:\javarun\IDEA\project\reggie_take_out\src\main\java\com\itheima\reggie\service\impl\ShoppingCartServiceImpl.java
 D:\javarun\IDEA\project\reggie_take_out\src\main\java\com\itheima\reggie\service\impl\EmployeeServiceImpl.java
