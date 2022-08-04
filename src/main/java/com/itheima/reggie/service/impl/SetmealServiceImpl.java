@@ -14,6 +14,7 @@ import com.itheima.reggie.service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,9 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
     @Autowired
     private SetmealDishService setmealDishService;
 
+    @Autowired
+    private RedisTemplate<Object,Object> redisTemplate;
+
 
     /**
      * 保存套餐信息，并且保存套餐相关的菜品信息
@@ -37,7 +41,11 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
     @Transactional
     @Override
     public void saveWithDish(SetmealDto setmealDto) {
-       this.save(setmealDto);
+
+        //清理某个分类下面的套餐缓存数据
+        String key = "dish_" + setmealDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
+        this.save(setmealDto);
 
        Setmeal setmeal = new Setmeal();
        BeanUtils.copyProperties(setmealDto,setmeal);
@@ -78,6 +86,10 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
     @Transactional
     @Override
     public void updateWithDish(SetmealDto setmealDto) {
+        //清理某个分类下面的套餐缓存数据
+        String key = "dish_" + setmealDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
+
         //修改setmeal表中套餐信息
         Setmeal setmeal = new Setmeal();
         BeanUtils.copyProperties(setmealDto,setmeal);
@@ -106,7 +118,6 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
      */
     @Override
     public R<String> removeWithDish(Long[] ids) {
-
         LambdaQueryWrapper<Setmeal> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Setmeal::getStatus,1).in(Setmeal::getId,ids);
         if (count(queryWrapper) > 0){

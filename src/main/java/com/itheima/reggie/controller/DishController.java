@@ -15,12 +15,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +44,9 @@ public class DishController {
     @Autowired
     private CategoryService categoryService;
 
+    @Autowired
+    private RedisTemplate<Object,Object> redisTemplate;
+
     /**
      * 新增菜品
      * @param dishDto
@@ -51,6 +57,17 @@ public class DishController {
         log.info(dishDto.toString());
 
         dishService.saveWithFlavor(dishDto);
+
+        //清理所有菜品的缓存数据
+        //Set<Object> keys = redisTemplate.keys("dish_*");
+        //if (keys != null){
+        //    redisTemplate.delete(keys);
+        //}
+
+        //清理某个分类下面的菜品缓存数据
+        String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
+
 
         return R.success("新增菜品成功");
     }
@@ -113,6 +130,16 @@ public class DishController {
 
         dishService.updateWithFlavor(dishDto);
 
+        //清理所有菜品的缓存数据
+        //Set<Object> keys = redisTemplate.keys("dish_*");
+        //if (keys != null){
+        //    redisTemplate.delete(keys);
+        //}
+
+        //清理某个分类下面的菜品缓存数据
+        String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
+
         return R.success("修改菜品成功");
     }
 
@@ -146,6 +173,17 @@ public class DishController {
 
         dishService.update(updateWrapper);
 
+        //条件构造器，查询后台改变状态的所有菜品
+        LambdaQueryWrapper<Dish> queryWrapper =new LambdaQueryWrapper<>();
+        queryWrapper.in(Dish::getId,ids);
+        List<Dish> dishes = dishService.list(queryWrapper);
+        dishes.stream().map((item) -> {
+            //清理某个分类下面的菜品缓存数据
+            String key = "dish_" + item.getCategoryId() + "_1";
+            redisTemplate.delete(key);
+            return null;
+        }).collect(Collectors.toList());
+
         return R.success("信息修改成功");
     }
 
@@ -156,6 +194,7 @@ public class DishController {
     @DeleteMapping
     public R<String> delete(Long[] ids){
         log.info("ids:{}",ids);
+
         return dishService.deleteWithFlavor(ids);
     }
 
@@ -165,22 +204,35 @@ public class DishController {
      */
     @GetMapping("/list")
     public R<List<DishDto>> getByCategoryId(Dish dish){ //dish中包含CategoryId，name,更通用
+        List<DishDto> dishDtos;
+        //先从redis中获取缓存数据
+        String key = "dish_" + dish.getCategoryId() + "_" + dish.getStatus();
+        dishDtos = (List<DishDto>) redisTemplate.opsForValue().get(key);
+
+        //如果存在，直接返回，无需查询数据库
+        if (dishDtos != null){
+            return R.success(dishDtos);
+        }
 
         LambdaQueryWrapper<Dish> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(dish.getCategoryId() != null,Dish::getCategoryId,dish.getCategoryId())
                 .eq(Dish::getStatus,1);
         queryWrapper.orderByAsc(Dish::getSort).orderByDesc(Dish::getUpdateTime);
         List<Dish> list = dishService.list(queryWrapper);
-        //得到dish的集合后，通过流的形式加上菜的口味，然后用dishDto进行封装，前段要有菜品口味才会显示选择菜品口味的按钮
-        List<DishDto> dishDtos = list.stream().map((item) -> {
+        //得到dish的集合后，通过流的形式加上菜的口味，然后用dishDto进行封装，前端要有菜品口味才会显示选择菜品口味的按钮
+        dishDtos = list.stream().map((item) -> {
             DishDto dishDto = new DishDto();
             BeanUtils.copyProperties(item, dishDto);
             LambdaQueryWrapper<DishFlavor> queryWrapper1 = new LambdaQueryWrapper<>();
             queryWrapper1.eq(DishFlavor::getDishId, item.getId());
             List<DishFlavor> dishFlavors = dishFlavorService.list(queryWrapper1);
             dishDto.setFlavors(dishFlavors);
+
             return dishDto;
         }).collect(Collectors.toList());
+
+        //如果不存在，则查询数据库把数据存入redis，过期时间为60分钟
+        redisTemplate.opsForValue().set(key,dishDtos,60, TimeUnit.MINUTES);
 
         return R.success(dishDtos);
     }
