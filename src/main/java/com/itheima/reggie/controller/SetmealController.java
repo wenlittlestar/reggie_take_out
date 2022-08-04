@@ -11,6 +11,8 @@ import com.itheima.reggie.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -22,7 +24,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestController
-@RequestMapping("setmeal")
+@RequestMapping("/setmeal")
 public class SetmealController {
 
     @Autowired
@@ -47,6 +49,7 @@ public class SetmealController {
      */
 
     @PostMapping
+    @CacheEvict(value = "setmealCache",allEntries = true)
     public R<String> save(@RequestBody SetmealDto setmealDto){
         log.info(setmealDto.toString());
         setmealService.saveWithDish(setmealDto);
@@ -96,6 +99,7 @@ public class SetmealController {
      * @return
      */
     @PutMapping
+    @CacheEvict(value = "setmealCache",allEntries = true)
     public R<String> update(@RequestBody SetmealDto setmealDto){
         log.info(setmealDto.toString());
         setmealService.updateWithDish(setmealDto);
@@ -123,6 +127,7 @@ public class SetmealController {
      * @return
      */
     @PostMapping("/status/{status}")
+    @CacheEvict(value = "setmealCache",allEntries = true)
     public R<String> status(@PathVariable int status,Long[] ids){
         log.info(Arrays.toString(ids));
         LambdaUpdateWrapper<Setmeal> updateWrapper = new LambdaUpdateWrapper<>();
@@ -149,7 +154,9 @@ public class SetmealController {
      * @return
      */
     @GetMapping("/list")
-    public R<List<Setmeal>> listSetmeal(Long categoryId, int status){
+    @Cacheable(value = "setmealCache",key = "#categoryId + '_'+ #status")
+    //R对象需要实现序列化接口，不然会报错java.lang.IllegalArgumentException: DefaultSerializer requires a Serializable payload but received an object of type [com.itheima.reggie.common.R]
+    public R<List<Setmeal>> listSetmeal(Long categoryId, Integer status){
         //获取当前categoryId对应的套餐
         LambdaQueryWrapper<Setmeal> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Setmeal::getCategoryId,categoryId).eq(Setmeal::getStatus,status);
