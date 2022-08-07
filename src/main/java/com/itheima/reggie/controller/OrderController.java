@@ -71,4 +71,24 @@ public class OrderController {
 
         return R.success(ordersPage);
     }
+
+    /**
+     * 后台订单分页查询
+     * @param page
+     * @param pageSize
+     * @return
+     */
+    @GetMapping("/page")
+    public R<Page> page1(int page,int pageSize){
+        Long userId = BaseContext.getCurrentId();
+        Page<Orders> ordersPage = new Page<>(page,pageSize);
+        //Page<OrdersDto> ordersDtoPage = new Page<>();
+
+        LambdaQueryWrapper<Orders> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(userId != null,Orders::getUserId,userId);
+        queryWrapper.orderByDesc(Orders::getCheckoutTime);
+        orderService.page(ordersPage,queryWrapper);
+
+        return R.success(ordersPage);
+    }
 }
